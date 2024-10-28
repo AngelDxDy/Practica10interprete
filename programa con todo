@@ -1,0 +1,292 @@
+#ifndef PROCESADOR_H 
+
+#define PROCESADOR_H 
+
+#include <stdbool.h> 
+
+ 
+
+#define MEM_SIZE 256 
+
+#define MAX_INSTRUCTIONS 100 
+
+#define NUM_REGISTERS 2 
+
+#define NUM_FLAGS 2 
+
+ 
+
+#define ZF 0 
+
+#define NF 1 
+
+ 
+
+typedef struct { 
+
+  char operator[6]; 
+
+  char operand1; 
+
+  int operand2; 
+
+} instruction; 
+
+ 
+
+typedef struct { 
+
+  int PC; 
+
+  int memory[MEM_SIZE]; 
+
+  int registers[NUM_REGISTERS]; 
+
+  bool flags[NUM_FLAGS]; 
+
+  instruction code_memory[MAX_INSTRUCTIONS]; 
+
+} processor; 
+
+ 
+
+void init_processor(processor *cpu); 
+
+void load_program(processor *cpu, const char *filename); 
+
+void update_flags(processor *cpu, int result); 
+
+void alu_and_control_unity(processor *cpu); 
+
+void print(processor *cpu); 
+
+void fprint(processor *cpu); 
+
+ 
+
+#endif 
+
+ 
+
+PEGAR  RN PROCESADOR.C: 
+
+#include <stdio.h> 
+
+#include <string.h> 
+
+#include <stdlib.h> // Para atoi 
+
+#include "procesador.h" 
+
+ 
+
+void init_processor(processor *cpu) { 
+
+    memset(cpu->memory, 0, sizeof(cpu->memory)); 
+
+    memset(cpu->registers, 0, sizeof(cpu->registers)); 
+
+    memset(cpu->flags, 0, sizeof(cpu->flags)); 
+
+    cpu->PC = 0; 
+
+} 
+
+ 
+
+void load_program(processor *cpu, const char *filename) { 
+
+    char line[256]; 
+
+    int c = 0; 
+
+    FILE *fp = fopen(filename, "r"); 
+
+    if (fp == NULL) { 
+
+        printf("Archivo no encontrado\n"); 
+
+        return; 
+
+    } 
+
+    while (fgets(line, sizeof(line), fp) != NULL && c < MAX_INSTRUCTIONS) { 
+
+        char *op = strtok(line, " "); 
+
+        char *op1 = strtok(NULL, " "); 
+
+        char *op2 = strtok(NULL, " "); 
+
+        if (op && op1 && op2) { 
+
+            strncpy(cpu->code_memory[c].operator, op, sizeof(cpu->code_memory[c].operator) - 1); 
+
+            cpu->code_memory[c].operator[sizeof(cpu->code_memory[c].operator) - 1] = '\0'; // Asegura el fin de la cadena 
+
+            cpu->code_memory[c].operand1 = op1[0]; 
+
+            cpu->code_memory[c].operand2 = atoi(op2); 
+
+            c++; 
+
+        } 
+
+    } 
+
+    fclose(fp); 
+
+} 
+
+ 
+
+void update_flags(processor *cpu, int result) { 
+
+    cpu->flags[ZF] = (result == 0); 
+
+    cpu->flags[NF] = (result < 0); 
+
+} 
+
+ 
+
+void alu_and_control_unity(processor *cpu) { 
+
+    instruction *instr = &cpu->code_memory[cpu->PC]; 
+
+ 
+
+    if (strcmp(instr->operator, "MOV") == 0) { 
+
+        cpu->registers[instr->operand1 - 'A'] = instr->operand2; 
+
+    } else if (strcmp(instr->operator, "SUB") == 0) { 
+
+        int result = cpu->registers[instr->operand1 - 'A'] - instr->operand2; 
+
+        cpu->registers[instr->operand1 - 'A'] = result; 
+
+        update_flags(cpu, result); 
+
+    } else if (strcmp(instr->operator, "JZ") == 0) { 
+
+        if (cpu->flags[ZF]) { 
+
+            cpu->PC = instr->operand2 - 1; // Ajuste por el incremento de PC en el bucle principal 
+
+        } 
+
+    } else if (strcmp(instr->operator, "JN") == 0) { 
+
+        if (cpu->flags[NF]) { 
+
+            cpu->PC = instr->operand2 - 1; // Ajuste por el incremento de PC en el bucle principal 
+
+        } 
+
+    } else if (strcmp(instr->operator, "JMP") == 0) { 
+
+        cpu->PC = instr->operand2 - 1; // Ajuste por el incremento de PC en el bucle principal 
+
+    } else if (strcmp(instr->operator, "LOAD") == 0) { 
+
+        cpu->registers[instr->operand1 - 'A'] = cpu->memory[instr->operand2]; 
+
+    } else if (strcmp(instr->operator, "STORE") == 0) { 
+
+        cpu->memory[instr->operand2] = cpu->registers[instr->operand1 - 'A']; 
+
+    } 
+
+} 
+
+ 
+
+void print(processor *cpu) { 
+
+    printf("PC: %d\n", cpu->PC); 
+
+    printf("Registros: A=%d, B=%d\n", cpu->registers[0], cpu->registers[1]); 
+
+    printf("Zero Flag: %d, Negative Flag: %d\n", cpu->flags[ZF], cpu->flags[NF]); 
+
+} 
+
+ 
+
+void fprint(processor *cpu) { 
+
+    // Implementación de la función de impresión en archivo 
+
+} 
+
+ 
+
+PEGAR EN MAIN.C: 
+#include <stdio.h> 
+
+#include "procesador.h" 
+
+ 
+
+int main() { 
+
+    processor cpu; 
+
+    init_processor(&cpu); 
+
+     
+
+    // Cargar el programa. Supongo que tienes un archivo llamado "programa.txt" 
+
+    load_program(&cpu, "programa.txt"); 
+
+ 
+
+    // Simulación del ciclo de fetch-decode-execute 
+
+    while (cpu.PC < MAX_INSTRUCTIONS) { 
+
+        alu_and_control_unity(&cpu); // Implementa la lógica aquí 
+
+        cpu.PC++; 
+
+    } 
+
+ 
+
+    // Imprimir resultados 
+
+    print(&cpu); 
+
+     
+
+    return 0; 
+
+} 
+
+ 
+
+CREAR UN PROGRAMA .TXT  y pegar: 
+
+MOV A 10 
+
+MOV B 5 
+
+SUB A 5 
+
+JZ 7 
+
+SUB B 5 
+
+JN 8 
+
+JMP 2 
+
+MOV A 0 
+
+MOV B -1 
+
+LOAD A 10 
+
+STORE A 2 
